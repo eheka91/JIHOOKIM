@@ -170,318 +170,159 @@ main{padding-bottom:60px}
 
 
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <script>
-
-// ⚠️ 이제 TOKEN은 필요 없습니다! SHARED 링크만 사용합니다.
-
 const SHARED = 'https://www.dropbox.com/scl/fo/y2qbm58f6xsbr940fdeb5/AH1gN-Y-Ew_zPseYGRlPfzs?rlkey=hhtl6njhhm7vtxfjkkyc7x8ot&st=c7ti95g4&dl=0';
-
 const IMGS = new Set(['jpg','jpeg','png','gif','webp','heic','heif','bmp','tiff','avif']);
-
 const VIDS = new Set(['mp4','mov','avi','mkv','m4v','wmv','3gp','mts']);
-
-
 
 let all=[], filt=[], lbIdx=0;
 
-
-
 function ext(n){return n.split('.').pop().toLowerCase()}
-
 function isMedia(n){const e=ext(n);return IMGS.has(e)||VIDS.has(e)}
-
 function isVid(n){return VIDS.has(ext(n))}
-
-// 파일 압축 해제 시 날짜는 현재 시간 또는 파일 생성 시간으로 대체됩니다.
-
 function fmtDate(d){if(!d)return '날짜 미상';return d.toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'})}
-
 function monthKey(d){if(!d)return '미상';return d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')}
-
 function monthLabel(k){if(k==='미상')return '날짜 미상';const[y,m]=k.split('.');return y+'년 '+parseInt(m)+'월'}
-
 function dayKey(d){return d?d.toISOString().slice(0,10):'미상'}
 
-
-
-// 🛠️ 핵심: 공유 링크 주소를 가공하여 zip 다운로드 주소로 변환
-
-function getZipLink(url) {
-
-  return url.replace('?dl=0', '?dl=1').replace('&dl=0', '&dl=1');
-
-}
-
-
-
-// 🛠️ 핵심: 공유 폴더를 zip으로 다운받아 내부의 파일들을 전부 파싱
-
-async function loadAllFromSharedLink() {
-
-  const zipUrl = getZipLink(SHARED);
-
-  const response = await fetch(zipUrl);
-
-  if (!response.ok) throw new Error('공유 링크에서 데이터를 가져오는데 실패했습니다.');
-
+// 🛠️ 우회 핵심: 공유 폴더의 HTML을 긁어와 그 안에 숨겨진 파일 목록 JSON을 추출
+async function loadAllFromScraping() {
+  // CORS 차단을 피하기 위해 임시 프록시 툴을 경유하거나 raw 파라미터를 활용합니다.
+  // Dropbox 공유페이지 내부 데이터를 파싱하기 위한 주소 변환
+  const rawUrl = SHARED.replace('?dl=0', '?raw=1').replace('&dl=0', '&raw=1');
   
-
-  const blob = await response.blob();
-
-  const zip = await JSZip.loadAsync(blob);
-
-  const filePromises = [];
-
-
-
-  zip.forEach((relativePath, zipEntry) => {
-
-    // 폴더가 아니고 미디어 파일 확장자를 가진 경우만 필터링
-
-    if (!zipEntry.dir && isMedia(zipEntry.name)) {
-
-      const p = zipEntry.async('blob').then(fileBlob => {
-
-        const localUrl = URL.createObjectURL(fileBlob);
-
-        // zip 내부 파일의 마지막 수정 시간을 기준으로 날짜 생성
-
-        const fileDate = zipEntry.date || new Date(); 
-
-        
-
-        return {
-
-          name: zipEntry.name.split('/').pop(),
-
-          path: relativePath,
-
-          date: fileDate,
-
-          isVideo: isVid(zipEntry.name),
-
-          link: localUrl // 브라우저 메모리에 로드된 로컬 URL을 바로 매핑
-
-        };
-
+  // 브라우저 직접 fetch CORS 해결을 위해 공개 CORS 프록시를 경유합니다.
+  const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(rawUrl);
+  
+  const response = await fetch(proxyUrl);
+  if (!response.ok) throw new Error('CORS 프록시 서버 응답 실패');
+  
+  const json = await response.json();
+  const htmlString = json.contents;
+  
+  // HTML 내부의 InitData 혹은 파일 목록 데이터가 담긴 script 태그 추적
+  const match = htmlString.match(/\"entries\":\s*(\[.*?\]),\s*\"has_more\"/);
+  if (!match) {
+    throw new Error('Dropbox 폴더 내 파일 목록 정보를 찾을 수 없습니다. 링크 권한을 확인하세요.');
+  }
+  
+  const entries = JSON.parse(match[1]);
+  const files = [];
+  
+  for (const e of entries) {
+    // 파일이며 미디어 확장자인 경우만 수집
+    if (e['.tag'] === 'file' && isMedia(e.name)) {
+      // 🛠️ 개별 파일 링크 가공: 썸네일 및 뷰어용 주소로 다이렉트 변환
+      let directLink = e.preview_url || '';
+      if (directLink) {
+        directLink = directLink.replace('?dl=0', '?raw=1').replace('&dl=0', '&raw=1');
+      }
+      
+      const fileDate = e.client_modified ? new Date(e.client_modified) : new Date();
+      
+      files.push({
+        name: e.name,
+        path: e.path_display,
+        date: fileDate,
+        isVideo: isVid(e.name),
+        link: directLink
       });
-
-      filePromises.push(p);
-
     }
-
-  });
-
-
-
-  const files = await Promise.all(filePromises);
-
-  // 최신 날짜 순 정렬
-
+  }
+  
   return files.sort((a, b) => (b.date || 0) - (a.date || 0));
-
 }
-
-
 
 function buildPills(){
-
   const months=[...new Set(all.map(f=>monthKey(f.date)))];
-
   const pg=document.getElementById('pills');
-
-  pg.innerHTML = '<button class="pill on" data-m="all">전체</button>'; // 초기화 후 생성
-
+  pg.innerHTML = '<button class="pill on" data-m="all">전체</button>';
   months.forEach(mk=>{
-
     const b=document.createElement('button');
-
     b.className='pill';b.dataset.m=mk;b.textContent=monthLabel(mk);
-
     b.onclick=()=>setMonth(mk);pg.appendChild(b);
-
   });
-
-  pg.querySelector('[data-m="all"]').onclick=()=>setMonth('all');
-
 }
-
-
 
 function setMonth(mk){
-
   document.querySelectorAll('.pill').forEach(p=>p.classList.toggle('on',p.dataset.m===mk));
-
   filt=mk==='all'?all:all.filter(f=>monthKey(f.date)===mk);
-
   renderGrid();
-
 }
-
-
 
 function renderGrid(){
-
   const groups=new Map();
-
   filt.forEach((f,i)=>{
-
     const k=dayKey(f.date);
-
     if(!groups.has(k))groups.set(k,[]);
-
     groups.get(k).push({...f,fi:i});
-
   });
-
   const main=document.getElementById('main');
-
   main.innerHTML='';
-
   if(groups.size===0){main.innerHTML='<div class="state"><p>📭 표시할 사진이 없어요</p></div>';return}
-
   groups.forEach(files=>{
-
     const sec=document.createElement('div');sec.className='sec';
-
     const hdr=document.createElement('div');hdr.className='sec-hdr';
-
     hdr.innerHTML=`<span class="sec-date">${fmtDate(files[0].date)}</span><span class="sec-cnt">${files.length}개</span>`;
-
     const grid=document.createElement('div');grid.className='grid';
-
     files.forEach(f=>{
-
       const cell=document.createElement('div');cell.className='cell';
-
       
-
-      // 가공 방식에서는 이미 로컬 URL(f.link)이 확보되어 있으므로 로딩 스피너 없이 바로 렌더링 가능합니다.
-
       if(f.isVideo){
-
         cell.innerHTML = `<video src="${f.link}#t=0.1" preload="metadata"></video><div class="vbadge">▶ 동영상</div>`;
-
       } else {
-
-        cell.innerHTML = `<img src="${f.link}" alt="${f.name}">`;
-
+        // 프리뷰 이미지 주소 적용
+        cell.innerHTML = `<img src="${f.link}" alt="${f.name}" onerror="this.src='https://placehold.co/150?text=IMAGE'">`;
       }
-
       
-
       cell.onclick=()=>openLb(f.fi);
-
       grid.appendChild(cell);
-
     });
-
     sec.appendChild(hdr);sec.appendChild(grid);
-
     main.appendChild(sec);
-
     const div=document.createElement('div');div.className='divider';main.appendChild(div);
-
   });
-
 }
-
-
 
 async function openLb(idx){lbIdx=idx;showLb();document.getElementById('lb').classList.add('open');document.body.style.overflow='hidden'}
-
 function showLb(){
-
   const f=filt[lbIdx];
-
   document.getElementById('lbname').textContent=f.name;
-
   document.getElementById('lbbot').textContent=fmtDate(f.date)+' · '+(lbIdx+1)+' / '+filt.length;
-
   const w=document.getElementById('lbwrap');
-
   
-
   if(f.isVideo){
-
     w.innerHTML=`<video src="${f.link}" controls autoplay style="max-width:100%;max-height:76vh;border-radius:6px"></video>`;
-
   } else {
-
     w.innerHTML=`<img src="${f.link}" alt="${f.name}" style="max-width:100%;max-height:76vh;border-radius:6px;display:block">`;
-
   }
-
 }
-
 function nav(d){lbIdx=(lbIdx+d+filt.length)%filt.length;showLb()}
-
 function closeLb(){document.getElementById('lb').classList.remove('open');document.body.style.overflow='';document.getElementById('lbwrap').innerHTML=''}
-
 document.getElementById('lb').addEventListener('click',e=>{if(e.target===document.getElementById('lb'))closeLb()});
-
 document.addEventListener('keydown',e=>{
-
   if(!document.getElementById('lb').classList.contains('open'))return;
-
   if(e.key==='ArrowRight')nav(1);if(e.key==='ArrowLeft')nav(-1);if(e.key==='Escape')closeLb();
-
 });
 
-
-
-// 초기화 실행 파트
-
+// INIT
 (async()=>{
-
   try{
-
-    // 가공된 링크를 통해 비동기로 전체 데이터를 덤프해옵니다.
-
-    all = await loadAllFromSharedLink();
-
+    all = await loadAllFromScraping();
     filt = [...all];
-
     if(all.length===0){document.getElementById('main').innerHTML='<div class="state"><p>📭 폴더에 사진이나 동영상이 없어요</p></div>';return}
-
     buildPills();renderGrid();
-
     document.getElementById('dot').className='dot ok';
-
     document.getElementById('stxt').textContent='총 '+all.length+'개';
-
     document.getElementById('hsub').textContent='날짜별로 정리된 사진 & 동영상';
-
   }catch(e){
-
     console.error(e);
-
     document.getElementById('main').innerHTML=`<div class="state"><p>⚠️ 불러오기 실패<br><small style="color:#bbb;font-size:11px">${e.message.slice(0,120)}</small></p></div>`;
-
     document.getElementById('dot').className='dot err';
-
     document.getElementById('stxt').textContent='오류';
-
   }
-
 })();
-
-</script>
-
-</body>
-
-</html>
-
-</script>
-
-</body>
-
-</html> 
-
-
-
 </script>
 </body>
 </html>
