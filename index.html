@@ -187,8 +187,10 @@ async function loadAll(){
         if(e['.tag']==='folder') folderQueue.push(e.path_lower||e.path_display);
         else if(e['.tag']==='file'&&isMedia(e.name)) allFiles.push(e);
       }
-    }catch(err){console.warn('폴더 스킵:',path,err)}
-  }
+    } catch(err) {
+  console.error('썸네일 실패:', f.name, err.message || err);
+  if (cell.querySelector('.lc')) cell.querySelector('.lc').innerHTML = '🖼️';
+}
   return allFiles.map(e=>({
     name:e.name,path:e.path_display||e.path_lower,
     date:getDate(e),isVideo:isVid(e.name),link:null,thumbUrl:null
