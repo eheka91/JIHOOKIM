@@ -124,39 +124,66 @@ async function tmpLink(path){
   }catch{return null}
 }
 
-async function listFolder(path){
-  let entries=[],cursor=null,hasMore=true;
-  while(hasMore){
+async function listFolder(relativePath) {
+  let entries = [], cursor = null, hasMore = true;
+  while (hasMore) {
     let data;
-    if(!cursor){
-      const body=path===''
-        ?{path:'',recursive:false,include_media_info:true,include_deleted:false,shared_link:{url:SHARED}}
-        :{path:path,recursive:false,include_media_info:true,include_deleted:false};
-      data=await api('files/list_folder',body);
+    if (!cursor) {
+      // 항상 shared_link를 포함하며, 하위 폴더는 주소 뒤에 상대 경로를 붙여 탐색해야 합니다.
+      const body = {
+        path: relativePath, // 최상위는 '', 하위 폴더는 '/폴더명' 형태
+        recursive: false,
+        include_media_info: true,
+        include_deleted: false,
+        shared_link: { url: SHARED }
+      };
+      data = await api('files/list_folder', body);
     } else {
-      data=await api('files/list_folder/continue',{cursor});
+      data = await api('files/list_folder/continue', { cursor });
     }
-    entries=entries.concat(data.entries||[]);
-    cursor=data.cursor;hasMore=data.has_more||false;
+    entries = entries.concat(data.entries || []);
+    cursor = data.cursor; 
+    hasMore = data.has_more || false;
   }
   return entries;
 }
 
-async function loadAll(){
-  const allEntries=[];
-  const queue=[''];
-  while(queue.length>0){
-    const path=queue.shift();
-    const entries=await listFolder(path);
-    for(const e of entries){
-      if(e['.tag']==='folder') queue.push(e.path_lower||e.path_display);
-      else allEntries.push(e);
+async function loadAll() {
+  const allEntries = [];
+  // queue에는 공유 링크 기준의 '상대 경로'를 담습니다. (최상위는 '')
+  const queue = ['']; 
+  
+  while (queue.length > 0) {
+    const currentRelativePath = queue.shift();
+    try {
+      const entries = await listFolder(currentRelativePath);
+      for (const e of entries) {
+        if (e['.tag'] === 'folder') {
+          // 공유 링크 안에서의 상대 경로는 e.path_lower 대신 e.name을 활용해 조립해야 안전합니다.
+          const nextPath = currentRelativePath + '/' + e.name;
+          queue.push(nextPath);
+        } else {
+          allEntries.push(e);
+        }
+      }
+    } catch (err) {
+      console.error("폴더 로드 실패:", currentRelativePath, err);
+      // 특정 폴더에서 에러가 나더라도 멈추지 않고 다음 큐 진행
     }
   }
-  return allEntries.filter(e=>e['.tag']==='file'&&isMedia(e.name)).map(e=>({
-    name:e.name,path:e.path_display||e.path_lower,
-    date:getDate(e),isVideo:isVid(e.name),link:null
-  })).sort((a,b)=>(b.date||0)-(a.date||0));
+  
+  return allEntries
+    .filter(e => e['.tag'] === 'file' && isMedia(e.name))
+    .map(e => ({
+      name: e.name,
+      // ⚠️ 주의: 공유 링크 파일들은 get_temporary_link 호출 시 id나 path가 아닌 
+      // e.path_lower를 그대로 쓰면 권한 에러가 날 수 있으므로, e.path_display나 id를 확인해야 합니다.
+      path: e.path_display || e.path_lower, 
+      date: getDate(e),
+      isVideo: isVid(e.name),
+      link: null
+    }))
+    .sort((a, b) => (b.date || 0) - (a.date || 0));
 }
 
 function buildPills(){
