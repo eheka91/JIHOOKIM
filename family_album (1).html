@@ -84,8 +84,9 @@ main{padding-bottom:60px}
   <div class="lb-bot" id="lbbot"></div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
-const TOKEN = 'sl.u.AGnv49Md5HjEtrSo_VsM4bjwqp_aP9s7r4Y0jxRLa6Za4cG8VzrKulaQyOsyLkAWxFL5roO63N7t2TeTGWzGVwdFjAi0WyWRL5TDt9p2k5FLSEtmWIWn6oGyz6bCpFgHPKBbQYYTawLlp053iCPLaWpKwOGzBMIP_sU3Ss493gES0NE6ooa8mDhhjPqjzOr3Z9xz-T1jH0EMkmxyVQMSrtlEOK7_evbGXTKdHPKH24W2JuLJK7txBrFEN7LKfpF96TJSSUEdPljxHQ0J04rBwaPt5ivmiLFnXb698XOf6kw5hUCJ6c7Xwu3K5TttgBnF0RB6kYUUdkppy2jLQV3iB9nlTlhv84yrIlDDfVWR23m5dUmdIk7KidfUPUPShMkRtJqqCLK08sPaTo5OsWat0bg180KfWWM8bg8nGNONjRKdfm2qbNm27SohM7Wh3BowsvvGSHWnLQp9UecPP4ig9QXNLcOtyMd4xWxRSmu0Ektj7n_6fRAJudDpnI_op3IaexuBG3v9NlfIUPe4aXVHFqN0o8Ox4zeiln3Cd6fEyD0AKtKJoAvmm8eDuwhft1EU1LJ8zq7mt3n6VBGBkmD5KLwrM0T3JENp8w9LJH4g9sHiPwG8PAJoDQyoEaOsxmvUcGpnsIz0B8ERko2palIIdqQFEEhXlWwLdmDH6tuRSo-ef0e1_FwRqbQh0lQlFVYEYV3R_DAUz4w1HvUujMldlbZ1PzOcRK0AHWRaz24831dmn-wyOz6JhVcOShpW2PjG9tL0tjj1sd4EXn4dK-adiwpVR8SfRe5i7jYPRn-5nrC3qESKY6S_s7GEz9qScVh1IEYqyd0pEohGk6Z80xKZp0RgnLazBfjRC3dRcMp1D8x8X0qeAZsAaJFJm2ZUi91QoV_gp4XlPY7Uj4uCsPpgMQ1uUFxfQA-8qWnZbBzW0njdtwr2rqeKQqSSORiDcLdInE5mknBjZaT_GvWm0u9ZkETB2uoJj7ov9tPvqp9K44hnNYcTUq2WnrEk4jmo_dcp-mQ9k2axJZMRjXi0sFuY-qdwsHoBWVb_WrFUbAb1ZkWCHHHq6ic-Z4HPru1xyEICrRaEe5pL8u9RWpz5Hz7vklEHIsu7ESlkM-tRr6wP_lQdB57e_SIIBjA3MLv1FLlKrFa56zLZzBOXqNRu0HBBOXTuKsdS57HlcOFnobBLB-D_WVszdrjN2s0OKUlqqIho-CcYMOFZSMUXpetKXdTMxIm4VnG18-Bfg0KeNE66O9icO5HVp-aU7Tadj3K4zRQt6BTLTdUOl6uCk4rbg82dyeuE3xFSxIWGews4t9t7hNEbcg';
+// ⚠️ 이제 TOKEN은 필요 없습니다! SHARED 링크만 사용합니다.
 const SHARED = 'https://www.dropbox.com/scl/fo/y2qbm58f6xsbr940fdeb5/AH1gN-Y-Ew_zPseYGRlPfzs?rlkey=hhtl6njhhm7vtxfjkkyc7x8ot&st=c7ti95g4&dl=0';
 const IMGS = new Set(['jpg','jpeg','png','gif','webp','heic','heif','bmp','tiff','avif']);
 const VIDS = new Set(['mp4','mov','avi','mkv','m4v','wmv','3gp','mts']);
@@ -95,56 +96,56 @@ let all=[], filt=[], lbIdx=0;
 function ext(n){return n.split('.').pop().toLowerCase()}
 function isMedia(n){const e=ext(n);return IMGS.has(e)||VIDS.has(e)}
 function isVid(n){return VIDS.has(ext(n))}
-function getDate(e){const r=e.client_modified||e.server_modified||'';return r?new Date(r):null}
+// 파일 압축 해제 시 날짜는 현재 시간 또는 파일 생성 시간으로 대체됩니다.
 function fmtDate(d){if(!d)return '날짜 미상';return d.toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'})}
 function monthKey(d){if(!d)return '미상';return d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')}
 function monthLabel(k){if(k==='미상')return '날짜 미상';const[y,m]=k.split('.');return y+'년 '+parseInt(m)+'월'}
 function dayKey(d){return d?d.toISOString().slice(0,10):'미상'}
 
-async function api(ep,body){
-  const r=await fetch('https://api.dropboxapi.com/2/'+ep,{
-    method:'POST',
-    headers:{'Authorization':'Bearer '+TOKEN,'Content-Type':'application/json'},
-    body:JSON.stringify(body)
-  });
-  if(!r.ok){const t=await r.text();throw new Error(t)}
-  return r.json();
+// 🛠️ 핵심: 공유 링크 주소를 가공하여 zip 다운로드 주소로 변환
+function getZipLink(url) {
+  return url.replace('?dl=0', '?dl=1').replace('&dl=0', '&dl=1');
 }
 
-async function tmpLink(path){
-  try{
-    const r=await fetch('https://api.dropboxapi.com/2/files/get_temporary_link',{
-      method:'POST',
-      headers:{'Authorization':'Bearer '+TOKEN,'Content-Type':'application/json'},
-      body:JSON.stringify({path})
-    });
-    if(!r.ok)return null;
-    const j=await r.json();
-    return j.link||null;
-  }catch{return null}
-}
+// 🛠️ 핵심: 공유 폴더를 zip으로 다운받아 내부의 파일들을 전부 파싱
+async function loadAllFromSharedLink() {
+  const zipUrl = getZipLink(SHARED);
+  const response = await fetch(zipUrl);
+  if (!response.ok) throw new Error('공유 링크에서 데이터를 가져오는데 실패했습니다.');
+  
+  const blob = await response.blob();
+  const zip = await JSZip.loadAsync(blob);
+  const filePromises = [];
 
-async function loadAll(){
-  let entries=[],cursor=null,hasMore=true;
-  while(hasMore){
-    let data;
-    if(!cursor){
-      data=await api('files/list_folder',{path:'',recursive:true,include_media_info:true,include_deleted:false,shared_link:{url:SHARED}});
-    } else {
-      data=await api('files/list_folder/continue',{cursor});
+  zip.forEach((relativePath, zipEntry) => {
+    // 폴더가 아니고 미디어 파일 확장자를 가진 경우만 필터링
+    if (!zipEntry.dir && isMedia(zipEntry.name)) {
+      const p = zipEntry.async('blob').then(fileBlob => {
+        const localUrl = URL.createObjectURL(fileBlob);
+        // zip 내부 파일의 마지막 수정 시간을 기준으로 날짜 생성
+        const fileDate = zipEntry.date || new Date(); 
+        
+        return {
+          name: zipEntry.name.split('/').pop(),
+          path: relativePath,
+          date: fileDate,
+          isVideo: isVid(zipEntry.name),
+          link: localUrl // 브라우저 메모리에 로드된 로컬 URL을 바로 매핑
+        };
+      });
+      filePromises.push(p);
     }
-    entries=entries.concat(data.entries||[]);
-    cursor=data.cursor;hasMore=data.has_more||false;
-  }
-  return entries.filter(e=>e['.tag']==='file'&&isMedia(e.name)).map(e=>({
-    name:e.name,path:e.path_display||e.path_lower,
-    date:getDate(e),isVideo:isVid(e.name),link:null
-  })).sort((a,b)=>(b.date||0)-(a.date||0));
+  });
+
+  const files = await Promise.all(filePromises);
+  // 최신 날짜 순 정렬
+  return files.sort((a, b) => (b.date || 0) - (a.date || 0));
 }
 
 function buildPills(){
   const months=[...new Set(all.map(f=>monthKey(f.date)))];
   const pg=document.getElementById('pills');
+  pg.innerHTML = '<button class="pill on" data-m="all">전체</button>'; // 초기화 후 생성
   months.forEach(mk=>{
     const b=document.createElement('button');
     b.className='pill';b.dataset.m=mk;b.textContent=monthLabel(mk);
@@ -176,11 +177,16 @@ function renderGrid(){
     const grid=document.createElement('div');grid.className='grid';
     files.forEach(f=>{
       const cell=document.createElement('div');cell.className='cell';
-      cell.innerHTML='<div class="loading-cell"><div class="mini-spin"></div></div>';
-      if(f.isVideo)cell.innerHTML+='<div class="vbadge">▶ 동영상</div>';
+      
+      // 가공 방식에서는 이미 로컬 URL(f.link)이 확보되어 있으므로 로딩 스피너 없이 바로 렌더링 가능합니다.
+      if(f.isVideo){
+        cell.innerHTML = `<video src="${f.link}#t=0.1" preload="metadata"></video><div class="vbadge">▶ 동영상</div>`;
+      } else {
+        cell.innerHTML = `<img src="${f.link}" alt="${f.name}">`;
+      }
+      
       cell.onclick=()=>openLb(f.fi);
       grid.appendChild(cell);
-      loadThumb(cell,f);
     });
     sec.appendChild(hdr);sec.appendChild(grid);
     main.appendChild(sec);
@@ -188,58 +194,18 @@ function renderGrid(){
   });
 }
 
-async function loadThumb(cell,f){
-  try{
-    if(!f.isVideo){
-      const r=await fetch('https://content.dropboxapi.com/2/files/get_thumbnail',{
-        method:'POST',
-        headers:{
-          'Authorization':'Bearer '+TOKEN,
-          'Dropbox-API-Arg':JSON.stringify({path:f.path,format:'jpeg',size:'w640h480',mode:'bestfit'})
-        }
-      });
-      if(r.ok){
-        const blob=await r.blob();
-        const url=URL.createObjectURL(blob);
-        const img=document.createElement('img');img.src=url;img.alt=f.name;
-        cell.querySelector('.loading-cell').remove();
-        cell.insertBefore(img,cell.firstChild);return;
-      }
-    }
-    const link=await tmpLink(f.path);
-    if(link){
-      f.link=link;
-      if(f.isVideo){
-        const v=document.createElement('video');v.src=link+'#t=0.1';v.preload='metadata';
-        cell.querySelector('.loading-cell').remove();cell.insertBefore(v,cell.firstChild);
-      } else {
-        const img=document.createElement('img');img.src=link;img.alt=f.name;
-        cell.querySelector('.loading-cell').remove();cell.insertBefore(img,cell.firstChild);
-      }
-    } else {
-      cell.querySelector('.loading-cell').innerHTML='🖼️';
-    }
-  }catch{if(cell.querySelector('.loading-cell'))cell.querySelector('.loading-cell').innerHTML='🖼️'}
-}
-
-async function openLb(idx){lbIdx=idx;await showLb();document.getElementById('lb').classList.add('open');document.body.style.overflow='hidden'}
-async function showLb(){
+async function openLb(idx){lbIdx=idx;showLb();document.getElementById('lb').classList.add('open');document.body.style.overflow='hidden'}
+function showLb(){
   const f=filt[lbIdx];
   document.getElementById('lbname').textContent=f.name;
   document.getElementById('lbbot').textContent=fmtDate(f.date)+' · '+(lbIdx+1)+' / '+filt.length;
   const w=document.getElementById('lbwrap');
-  w.innerHTML='<div style="display:flex;align-items:center;justify-content:center;width:60px;height:60px"><div class="spin"></div></div>';
-  try{
-    let link=f.link||(await tmpLink(f.path));
-    if(link)f.link=link;
-    if(f.isVideo){
-      w.innerHTML=`<video src="${link}" controls autoplay style="max-width:100%;max-height:76vh;border-radius:6px"></video>`;
-    } else {
-      const img=new Image();img.src=link||'';img.alt=f.name;
-      img.style.cssText='max-width:100%;max-height:76vh;border-radius:6px;display:block';
-      w.innerHTML='';w.appendChild(img);
-    }
-  }catch{w.innerHTML='<p style="color:#fff">불러오기 실패</p>'}
+  
+  if(f.isVideo){
+    w.innerHTML=`<video src="${f.link}" controls autoplay style="max-width:100%;max-height:76vh;border-radius:6px"></video>`;
+  } else {
+    w.innerHTML=`<img src="${f.link}" alt="${f.name}" style="max-width:100%;max-height:76vh;border-radius:6px;display:block">`;
+  }
 }
 function nav(d){lbIdx=(lbIdx+d+filt.length)%filt.length;showLb()}
 function closeLb(){document.getElementById('lb').classList.remove('open');document.body.style.overflow='';document.getElementById('lbwrap').innerHTML=''}
@@ -249,11 +215,12 @@ document.addEventListener('keydown',e=>{
   if(e.key==='ArrowRight')nav(1);if(e.key==='ArrowLeft')nav(-1);if(e.key==='Escape')closeLb();
 });
 
-// INIT
+// 초기화 실행 파트
 (async()=>{
   try{
-    all=await loadAll();
-    filt=[...all];
+    // 가공된 링크를 통해 비동기로 전체 데이터를 덤프해옵니다.
+    all = await loadAllFromSharedLink();
+    filt = [...all];
     if(all.length===0){document.getElementById('main').innerHTML='<div class="state"><p>📭 폴더에 사진이나 동영상이 없어요</p></div>';return}
     buildPills();renderGrid();
     document.getElementById('dot').className='dot ok';
