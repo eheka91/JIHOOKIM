@@ -35,7 +35,7 @@ main{padding-bottom:60px}
 .cell{aspect-ratio:1;overflow:hidden;position:relative;cursor:pointer;background:var(--al)}
 .cell img,.cell video{width:100%;height:100%;object-fit:cover;display:block;transition:opacity .2s}
 .cell:hover img,.cell:hover video{opacity:.82}
-.vbadge{position:absolute;bottom:5px;left:6px;background:rgba(0,0,0,.52);color:#fff;font-size:9px;padding:2px 6px;border-radius:8px}
+.vbadge{position:absolute;bottom:5px;left:6px;background:rgba(0,0,0,.52);color:#fff;font-size:9px;padding:2px 6px;border-radius:8px;z-index:2}
 .lc{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--al)}
 .ms{width:18px;height:18px;border:2px solid rgba(196,133,90,.3);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
 .divider{height:0.5px;background:var(--border);margin:4px 0}
@@ -73,12 +73,15 @@ main{padding-bottom:60px}
   <button class="lb-btn lb-next" onclick="nav(1)">&#8250;</button>
   <div class="lb-bot" id="lbb"></div>
 </div>
+
 <script>
 const TOKEN='sl.u.AGnv49Md5HjEtrSo_VsM4bjwqp_aP9s7r4Y0jxRLa6Za4cG8VzrKulaQyOsyLkAWxFL5roO63N7t2TeTGWzGVwdFjAi0WyWRL5TDt9p2k5FLSEtmWIWn6oGyz6bCpFgHPKBbQYYTawLlp053iCPLaWpKwOGzBMIP_sU3Ss493gES0NE6ooa8mDhhjPqjzOr3Z9xz-T1jH0EMkmxyVQMSrtlEOK7_evbGXTKdHPKH24W2JuLJK7txBrFEN7LKfpF96TJSSUEdPljxHQ0J04rBwaPt5ivmiLFnXb698XOf6kw5hUCJ6c7Xwu3K5TttgBnF0RB6kYUUdkppy2jLQV3iB9nlTlhv84yrIlDDfVWR23m5dUmdIk7KidfUPUPShMkRtJqqCLK08sPaTo5OsWat0bg180KfWWM8bg8nGNONjRKdfm2qbNm27SohM7Wh3BowsvvGSHWnLQp9UecPP4ig9QXNLcOtyMd4xWxRSmu0Ektj7n_6fRAJudDpnI_op3IaexuBG3v9NlfIUPe4aXVHFqN0o8Ox4zeiln3Cd6fEyD0AKtKJoAvmm8eDuwhft1EU1LJ8zq7mt3n6VBGBkmD5KLwrM0T3JENp8w9LJH4g9sHiPwG8PAJoDQyoEaOsxmvUcGpnsIz0B8ERko2palIIdqQFEEhXlWwLdmDH6tuRSo-ef0e1_FwRqbQh0lQlFVYEYV3R_DAUz4w1HvUujMldlbZ1PzOcRK0AHWRaz24831dmn-wyOz6JhVcOShpW2PjG9tL0tjj1sd4EXn4dK-adiwpVR8SfRe5i7jYPRn-5nrC3qESKY6S_s7GEz9qScVh1IEYqyd0pEohGk6Z80xKZp0RgnLazBfjRC3dRcMp1D8x8X0qeAZsAaJFJm2ZUi91QoV_gp4XlPY7Uj4uCsPpgMQ1uUFxfQA-8qWnZbBzW0njdtwr2rqeKQqSSORiDcLdInE5mknBjZaT_GvWm0u9ZkETB2uoJj7ov9tPvqp9K44hnNYcTUq2WnrEk4jmo_dcp-mQ9k2axJZMRjXi0sFuY-qdwsHoBWVb_WrFUbAb1ZkWCHHHq6ic-Z4HPru1xyEICrRaEe5pL8u9RWpz5Hz7vklEHIsu7ESlkM-tRr6wP_lQdB57e_SIIBjA3MLv1FLlKrFa56zLZzBOXqNRu0HBBOXTuKsdS57HlcOFnobBLB-D_WVszdrjN2s0OKUlqqIho-CcYMOFZSMUXpetKXdTMxIm4VnG18-Bfg0KeNE66O9icO5HVp-aU7Tadj3K4zRQt6BTLTdUOl6uCk4rbg82dyeuE3xFSxIWGews4t9t7hNEbcg';
 const SHARED='https://www.dropbox.com/scl/fo/y2qbm58f6xsbr940fdeb5/AH1gN-Y-Ew_zPseYGRlPfzs?rlkey=hhtl6njhhm7vtxfjkkyc7x8ot&st=c7ti95g4&dl=0';
 const IMGS=new Set(['jpg','jpeg','png','gif','webp','heic','heif','bmp','tiff','avif']);
 const VIDS=new Set(['mp4','mov','avi','mkv','m4v','wmv','3gp','mts']);
+
 let all=[],filt=[],lbIdx=0;
+
 const ext=n=>n.split('.').pop().toLowerCase();
 const isMedia=n=>{const e=ext(n);return IMGS.has(e)||VIDS.has(e)};
 const isVid=n=>VIDS.has(ext(n));
@@ -87,6 +90,27 @@ const fmtDate=d=>d?d.toLocaleDateString('ko-KR',{year:'numeric',month:'long',day
 const monthKey=d=>d?d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0'):'미상';
 const monthLabel=k=>k==='미상'?'날짜 미상':(([y,m])=>y+'년 '+parseInt(m)+'월')(k.split('.'));
 const dayKey=d=>d?d.toISOString().slice(0,10):'미상';
+
+// ── 동시 요청 수 제한용 세마포어 ──
+class Semaphore {
+  constructor(max){this.max=max;this.cur=0;this.q=[]}
+  acquire(){return new Promise(res=>{if(this.cur<this.max){this.cur++;res()}else{this.q.push(res)}})}
+  release(){this.cur--;if(this.q.length){this.cur++;this.q.shift()()}}
+}
+const thumbSem = new Semaphore(4); // 썸네일 동시 4개
+const linkSem  = new Semaphore(3); // 임시링크 동시 3개
+
+// ── Intersection Observer (화면에 보일 때만 로딩) ──
+const observer = new IntersectionObserver((entries)=>{
+  entries.forEach(en=>{
+    if(en.isIntersecting){
+      const cell=en.target;
+      observer.unobserve(cell);
+      const f=all[+cell.dataset.fi];
+      if(f) loadThumb(cell,f);
+    }
+  });
+},{rootMargin:'200px'});
 
 async function api(ep,body){
   const r=await fetch('https://api.dropboxapi.com/2/'+ep,{
@@ -99,6 +123,7 @@ async function api(ep,body){
 }
 
 async function tmpLink(path){
+  await linkSem.acquire();
   try{
     const r=await fetch('https://api.dropboxapi.com/2/files/get_temporary_link',{
       method:'POST',
@@ -108,9 +133,9 @@ async function tmpLink(path){
     if(!r.ok)return null;
     return (await r.json()).link||null;
   }catch{return null}
+  finally{linkSem.release()}
 }
 
-// 공유링크로 루트 폴더만 가져온 뒤, 하위폴더는 실제 경로로 순회
 async function listSharedRoot(){
   let entries=[],cursor=null,hasMore=true;
   while(hasMore){
@@ -120,7 +145,7 @@ async function listSharedRoot(){
         path:'',recursive:false,include_media_info:true,include_deleted:false,
         shared_link:{url:SHARED}
       });
-    } else {
+    }else{
       data=await api('files/list_folder/continue',{cursor});
     }
     entries=entries.concat(data.entries||[]);
@@ -137,7 +162,7 @@ async function listPath(path){
       data=await api('files/list_folder',{
         path:path,recursive:false,include_media_info:true,include_deleted:false
       });
-    } else {
+    }else{
       data=await api('files/list_folder/continue',{cursor});
     }
     entries=entries.concat(data.entries||[]);
@@ -147,54 +172,32 @@ async function listPath(path){
 }
 
 async function loadAll(){
-  const allFiles = [];
-  const rootEntries = await listSharedRoot();
-  const folderQueue = [];
-  
+  const allFiles=[];
+  const rootEntries=await listSharedRoot();
+  const folderQueue=[];
   for(const e of rootEntries){
-    if(e['.tag'] === 'folder') folderQueue.push(e.path_lower || e.path_display);
-    else if(e['.tag'] === 'file' && isMedia(e.name)) allFiles.push(e);
+    if(e['.tag']==='folder') folderQueue.push(e.path_lower||e.path_display);
+    else if(e['.tag']==='file'&&isMedia(e.name)) allFiles.push(e);
   }
-  
-  // ⚡ 개선 1: 하위 폴더들을 Promise.all로 병렬 탐색하여 대기 시간을 획기적으로 줄입니다.
-  if (folderQueue.length > 0) {
-    try {
-      const folderResults = await Promise.all(
-        folderQueue.map(async (path) => {
-          try {
-            return await listPath(path);
-          } catch (err) {
-            console.warn('폴더 스킵:', path, err);
-            return [];
-          }
-        })
-      );
-      
-      // 병렬로 긁어온 파일 데이터 합치기
-      for (const entries of folderResults) {
-        for (const e of entries) {
-          if (e['.tag'] === 'file' && isMedia(e.name)) {
-            allFiles.push(e);
-          }
-          // 만약 3단계 깊이 이상의 하위 폴더 구조가 있다면 
-          // 여기에 추가 queue 처리가 필요하나, 일반적인 2단계 구조는 이대로 병렬 종결됩니다.
-        }
+  while(folderQueue.length>0){
+    const path=folderQueue.shift();
+    try{
+      const entries=await listPath(path);
+      for(const e of entries){
+        if(e['.tag']==='folder') folderQueue.push(e.path_lower||e.path_display);
+        else if(e['.tag']==='file'&&isMedia(e.name)) allFiles.push(e);
       }
-    } catch (e) {
-      console.error("하위 폴더 탐색 실패", e);
-    }
+    }catch(err){console.warn('폴더 스킵:',path,err)}
   }
-
   return allFiles.map(e=>({
-    name:e.name, path:e.path_display||e.path_lower,
-    date:getDate(e), isVideo:isVid(e.name), link:null
+    name:e.name,path:e.path_display||e.path_lower,
+    date:getDate(e),isVideo:isVid(e.name),link:null,thumbUrl:null
   })).sort((a,b)=>(b.date||0)-(a.date||0));
 }
 
 function buildPills(){
   const months=[...new Set(all.map(f=>monthKey(f.date)))];
   const pg=document.getElementById('pills');
-  pg.innerHTML = '<button class="pill on" data-m="all">전체</button>'; // 초기화 보장
   months.forEach(mk=>{
     const b=document.createElement('button');
     b.className='pill';b.dataset.m=mk;b.textContent=monthLabel(mk);
@@ -214,85 +217,114 @@ function renderGrid(){
   filt.forEach((f,i)=>{
     const k=dayKey(f.date);
     if(!groups.has(k))groups.set(k,[]);
-    groups.get(k).push({...f,fi:i});
+    groups.get(k).push({...f,fi:all.indexOf(f)});
   });
-  
   const main=document.getElementById('main');
   main.innerHTML='';
   if(groups.size===0){main.innerHTML='<div class="state"><p>📭 표시할 사진이 없어요</p></div>';return}
-  
-  const thumbPromises = []; // ⚡ 개선 2: 썸네일 일괄 처리를 위한 배열
 
   groups.forEach(files=>{
     const sec=document.createElement('div');sec.className='sec';
     const hdr=document.createElement('div');hdr.className='sec-hdr';
     hdr.innerHTML=`<span class="sec-date">${fmtDate(files[0].date)}</span><span class="sec-cnt">${files.length}개</span>`;
     const grid=document.createElement('div');grid.className='grid';
-    
+
     files.forEach(f=>{
-      const cell=document.createElement('div');cell.className='cell';
+      const cell=document.createElement('div');
+      cell.className='cell';
+      cell.dataset.fi=f.fi;
       cell.innerHTML='<div class="lc"><div class="ms"></div></div>';
-      if(f.isVideo)cell.innerHTML+='<div class="vbadge">▶ 동영상</div>';
-      cell.onclick=()=>openLb(f.fi);
+      if(f.isVideo) cell.innerHTML+='<div class="vbadge">▶ 동영상</div>';
+
+      // 라이트박스는 filt 기준 index
+      const filtIdx=filt.indexOf(all[f.fi]);
+      cell.onclick=()=>openLb(filtIdx);
+
       grid.appendChild(cell);
-      
-      // 요소를 배치하자마자 비동기로 스택에 쌓기
-      thumbPromises.push(loadThumb(cell, f));
+
+      // 이미 캐시된 썸네일이 있으면 바로 표시
+      if(f.thumbUrl){
+        applyThumb(cell, f);
+      } else {
+        // 화면에 들어올 때 로딩
+        observer.observe(cell);
+      }
     });
-    
+
     sec.appendChild(hdr);sec.appendChild(grid);
     main.appendChild(sec);
     const d=document.createElement('div');d.className='divider';main.appendChild(d);
   });
-
-  // ⚡ 개선 3: 화면 골격 렌더링 후 모든 썸네일을 다중 스레드처럼 한꺼번에 로드합니다.
-  Promise.all(thumbPromises);
 }
 
-async function loadThumb(cell,f){
+// 썸네일 DOM 적용
+function applyThumb(cell, f){
+  const lc=cell.querySelector('.lc');
+  if(!lc)return;
+  if(f.isVideo){
+    const v=document.createElement('video');
+    v.src=f.thumbUrl+'#t=0.1';v.preload='metadata';
+    lc.remove();cell.insertBefore(v,cell.firstChild);
+  } else {
+    const img=document.createElement('img');
+    img.src=f.thumbUrl;img.alt=f.name;
+    img.loading='lazy';
+    lc.remove();cell.insertBefore(img,cell.firstChild);
+  }
+}
+
+// 썸네일 로딩: 작은 크기(w256h256)만 요청, 실패 시 원본 미로딩
+async function loadThumb(cell, f){
+  await thumbSem.acquire();
   try{
-    // ⚡ 개선 4: 비디오 파일은 불필요한 get_thumbnail API 연동을 스킵하여 속도를 아낍니다.
     if(!f.isVideo){
+      // w256h256 — 가장 작은 사이즈로 요청해 용량 최소화
       const r=await fetch('https://content.dropboxapi.com/2/files/get_thumbnail',{
         method:'POST',
         headers:{
           'Authorization':'Bearer '+TOKEN,
-          'Dropbox-API-Arg':JSON.stringify({path:f.path,format:'jpeg',size:'w640h480',mode:'bestfit'})
+          'Dropbox-API-Arg':JSON.stringify({
+            path:f.path,
+            format:'jpeg',
+            size:'w256h256',   // ← 핵심: 작은 크기
+            mode:'bestfit',
+            quality:'quality_80'
+          })
         }
       });
       if(r.ok){
         const url=URL.createObjectURL(await r.blob());
-        const img=document.createElement('img');img.src=url;img.alt=f.name;
-        const lc = cell.querySelector('.lc');
-        if(lc) lc.remove();
-        cell.insertBefore(img,cell.firstChild);
+        f.thumbUrl=url;
+        applyThumb(cell,f);
         return;
       }
     }
-    
-    // 비디오거나 썸네일 생성 실패 시 임시 링크 생성
+    // 동영상이거나 썸네일 API 실패 시 임시 링크
     const link=await tmpLink(f.path);
     if(link){
       f.link=link;
-      const lc = cell.querySelector('.lc');
-      if(lc) lc.remove();
-      
-      if(f.isVideo){
-        const v=document.createElement('video');v.src=link+'#t=0.1';v.preload='metadata';
-        cell.insertBefore(v,cell.firstChild);
-      } else {
-        const img=document.createElement('img');img.src=link;img.alt=f.name;
-        cell.insertBefore(img,cell.firstChild);
-      }
+      f.thumbUrl=link;
+      applyThumb(cell,f);
     } else {
-      if(cell.querySelector('.lc')) cell.querySelector('.lc').innerHTML='🖼️';
+      const lc=cell.querySelector('.lc');
+      if(lc) lc.innerHTML='🖼️';
     }
   }catch{
-    if(cell.querySelector('.lc')) cell.querySelector('.lc').innerHTML='🖼️';
+    const lc=cell.querySelector('.lc');
+    if(lc) lc.innerHTML='🖼️';
+  }finally{
+    thumbSem.release();
   }
 }
 
-async function openLb(idx){lbIdx=idx;await showLb();document.getElementById('lb').classList.add('open');document.body.style.overflow='hidden'}
+// ── 라이트박스 ──
+async function openLb(idx){
+  lbIdx=idx;
+  await showLb();
+  document.getElementById('lb').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+
 async function showLb(){
   const f=filt[lbIdx];
   document.getElementById('lbn').textContent=f.name;
@@ -300,8 +332,9 @@ async function showLb(){
   const w=document.getElementById('lbw');
   w.innerHTML='<div style="display:flex;align-items:center;justify-content:center;width:60px;height:60px"><div class="spin"></div></div>';
   try{
+    // 라이트박스에선 원본 임시링크 사용
     const link=f.link||(await tmpLink(f.path));
-    if(link)f.link=link;
+    if(link) f.link=link;
     if(f.isVideo){
       w.innerHTML=`<video src="${link}" controls autoplay style="max-width:100%;max-height:76vh;border-radius:6px"></video>`;
     } else {
@@ -309,8 +342,11 @@ async function showLb(){
       img.style.cssText='max-width:100%;max-height:76vh;border-radius:6px;display:block';
       w.innerHTML='';w.appendChild(img);
     }
-  }catch{w.innerHTML='<p style="color:#fff;font-size:14px">불러오기 실패</p>'}
+  }catch{
+    w.innerHTML='<p style="color:#fff;font-size:14px">불러오기 실패</p>';
+  }
 }
+
 function nav(d){lbIdx=(lbIdx+d+filt.length)%filt.length;showLb()}
 function closeLb(){document.getElementById('lb').classList.remove('open');document.body.style.overflow='';document.getElementById('lbw').innerHTML=''}
 document.getElementById('lb').addEventListener('click',e=>{if(e.target===document.getElementById('lb'))closeLb()});
@@ -337,4 +373,7 @@ document.addEventListener('keydown',e=>{
     document.getElementById('stxt').textContent='오류';
   }
 })();
+</script>
+</body>
+</html>
 
