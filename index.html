@@ -276,47 +276,76 @@ function applyThumb(cell, f){
 }
 
 // 썸네일 로딩: 작은 크기(w256h256)만 요청, 실패 시 원본 미로딩
-async function loadThumb(cell, f){
-  await thumbSem.acquire();
-  try{
-    if(!f.isVideo){
-      // w256h256 — 가장 작은 사이즈로 요청해 용량 최소화
-      const r=await fetch('https://content.dropboxapi.com/2/files/get_thumbnail',{
-        method:'POST',
-        headers:{
-          'Authorization':'Bearer '+TOKEN,
-          'Dropbox-API-Arg':JSON.stringify({
-            path:f.path,
-            format:'jpeg',
-            size:'w256h256',   // ← 핵심: 작은 크기
-            mode:'bestfit',
-            quality:'quality_80'
+  const THUMB_OK = new Set(['jpg','jpeg','png','gif','webp','bmp']);
+async function loadThumb(cell, f) {
+  const lc = cell.querySelector('.lc');
+  try {
+    // 1단계: 썸네일 API (지원 포맷만)
+    if (!f.isVideo && THUMB_OK.has(ext(f.name))) {
+      const r = await fetch('https://content.dropboxapi.com/2/files/get_thumbnail_v2', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + TOKEN,
+          'Dropbox-API-Arg': JSON.stringify({
+            resource: { '.tag': 'path', path: f.path },
+            format: 'jpeg',
+            size: 'w640h480',
+            mode: 'bestfit'
           })
         }
       });
-      if(r.ok){
-        const url=URL.createObjectURL(await r.blob());
-        f.thumbUrl=url;
-        applyThumb(cell,f);
+      if (r.ok) {
+        const blob = await r.blob();
+        const b64 = await blobToBase64(blob);
+        const img = document.createElement('img');
+        img.alt = f.name;
+        img.src = b64;
+        lc?.remove();
+        cell.insertBefore(img, cell.firstChild);
         return;
       }
     }
-    // 동영상이거나 썸네일 API 실패 시 임시 링크
-    const link=await tmpLink(f.path);
-    if(link){
-      f.link=link;
-      f.thumbUrl=link;
-      applyThumb(cell,f);
+
+    // 2단계: tmpLink 폴백
+    const link = await tmpLink(f.path);
+    if (!link) { if (lc) lc.innerHTML = '🖼️'; return; }
+    f.link = link;
+
+    if (f.isVideo) {
+      const v = document.createElement('video');
+      v.src = link + '#t=0.1';
+      v.preload = 'metadata';
+      lc?.remove();
+      cell.insertBefore(v, cell.firstChild);
     } else {
-      const lc=cell.querySelector('.lc');
-      if(lc) lc.innerHTML='🖼️';
+      // 이미지도 fetch해서 base64로
+      const r2 = await fetch(link);
+      if (r2.ok) {
+        const blob = await r2.blob();
+        const b64 = await blobToBase64(blob);
+        const img = document.createElement('img');
+        img.alt = f.name;
+        img.src = b64;
+        lc?.remove();
+        cell.insertBefore(img, cell.firstChild);
+      } else {
+        if (lc) lc.innerHTML = '🖼️';
+      }
     }
-  }catch{
-    const lc=cell.querySelector('.lc');
-    if(lc) lc.innerHTML='🖼️';
-  }finally{
-    thumbSem.release();
+  } catch(err) {
+    console.warn('loadThumb 실패:', f.name, err);
+    if (cell.querySelector('.lc')) cell.querySelector('.lc').innerHTML = '🖼️';
   }
+}
+
+// blob → base64 변환 헬퍼
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
 // ── 라이트박스 ──
