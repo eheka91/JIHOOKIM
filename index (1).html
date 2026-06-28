@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>우리 가족 앨범</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --cream:#FDF8F3;--brown:#5C3D2E;--accent:#C4855A;
+  --accent-light:#F0DDD0;--muted:#9B7B6A;--border:#E8DDD0;
+  --text:#3D2B1F;--sub:#7A5A48;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif;background:var(--cream);color:var(--text);min-height:100vh}
+header{position:sticky;top:0;z-index:50;background:rgba(253,248,243,0.96);backdrop-filter:blur(10px);border-bottom:0.5px solid var(--border);padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-size:18px;font-weight:700;color:var(--brown);letter-spacing:-0.4px}
+.logo span{color:var(--accent)}
+.status{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px}
+.dot{width:7px;height:7px;border-radius:50%;background:#ccc;display:inline-block;transition:background 0.3s}
+.dot.ok{background:#7DB87D}.dot.err{background:#E57373}
+.hero{padding:28px 20px 16px}
+.hero h1{font-size:24px;font-weight:700;letter-spacing:-0.5px;margin-bottom:4px}
+.hero p{font-size:13px;color:var(--muted)}
+.filter-wrap{padding:0 20px 16px;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+.filter-wrap::-webkit-scrollbar{display:none}
+.pills{display:inline-flex;gap:7px}
+.pill{padding:6px 14px;border:0.5px solid var(--border);border-radius:20px;font-size:12px;font-weight:500;color:var(--sub);background:var(--cream);cursor:pointer;transition:all 0.15s}
+.pill:hover{border-color:var(--accent);color:var(--accent)}
+.pill.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+main{padding-bottom:60px}
+.state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;gap:14px;text-align:center}
+.state p{font-size:14px;color:var(--muted);line-height:1.7;max-width:280px}
+.spin{width:32px;height:32px;border:3px solid var(--accent-light);border-top-color:var(--accent);border-radius:50%;animation:spin 0.75s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sec{margin-bottom:4px}
+.sec-hdr{display:flex;align-items:baseline;gap:8px;padding:20px 20px 10px}
+.sec-date{font-size:14px;font-weight:700;color:var(--text)}
+.sec-cnt{font-size:11px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}
+.cell{aspect-ratio:1;overflow:hidden;position:relative;cursor:pointer;background:var(--accent-light)}
+.cell img,.cell video{width:100%;height:100%;object-fit:cover;display:block;transition:opacity 0.2s}
+.cell:hover img,.cell:hover video{opacity:0.82}
+.vbadge{position:absolute;bottom:5px;left:6px;background:rgba(0,0,0,0.52);color:#fff;font-size:9px;padding:2px 6px;border-radius:8px}
+.loading-cell{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--accent-light)}
+.mini-spin{width:18px;height:18px;border:2px solid rgba(196,133,90,0.3);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite}
+.divider{height:0.5px;background:var(--border);margin:4px 0}
+/* Lightbox */
+.lb{display:none;position:fixed;inset:0;z-index:200;background:rgba(15,8,4,0.93);flex-direction:column;align-items:center;justify-content:center}
+.lb.open{display:flex}
+.lb-top{position:absolute;top:0;left:0;right:0;padding:14px 18px;display:flex;justify-content:space-between;align-items:center}
+.lb-name{color:rgba(255,255,255,0.65);font-size:13px;max-width:72%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-x{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.13);border:none;color:#fff;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s}
+.lb-x:hover{background:rgba(255,255,255,0.25)}
+.lb-wrap{max-width:min(92vw,860px);max-height:76vh;display:flex;align-items:center;justify-content:center}
+.lb-wrap img,.lb-wrap video{max-width:100%;max-height:76vh;border-radius:6px;display:block}
+.lb-bot{position:absolute;bottom:0;left:0;right:0;padding:14px;text-align:center;color:rgba(255,255,255,0.45);font-size:12px}
+.lb-btn{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,0.13);border:none;color:#fff;font-size:26px;cursor:pointer;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:background 0.15s}
+.lb-btn:hover{background:rgba(255,255,255,0.25)}
+.lb-prev{left:14px}.lb-next{right:14px}
+@media(min-width:540px){.grid{grid-template-columns:repeat(4,1fr)}}
+@media(min-width:800px){.grid{grid-template-columns:repeat(5,1fr)};header{padding:16px 32px};.hero{padding:36px 32px 20px};.filter-wrap{padding:0 32px 18px};.sec-hdr{padding:20px 32px 10px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">우리 가족 <span>앨범</span></div>
+  <div class="status"><span class="dot" id="dot"></span><span id="stxt">불러오는 중...</span></div>
+</header>
+<div class="hero">
+  <h1>소중한 순간들 📷</h1>
+  <p id="hsub">Dropbox에서 사진을 가져오고 있어요</p>
+</div>
+<div class="filter-wrap"><div class="pills" id="pills"><button class="pill on" data-m="all">전체</button></div></div>
+<main id="main"><div class="state"><div class="spin"></div><p>잠시만 기다려 주세요...</p></div></main>
+
+<div class="lb" id="lb">
+  <div class="lb-top">
+    <span class="lb-name" id="lbname"></span>
+    <button class="lb-x" onclick="closeLb()">✕</button>
+  </div>
+  <button class="lb-btn lb-prev" onclick="nav(-1)">&#8249;</button>
+  <div class="lb-wrap" id="lbwrap"></div>
+  <button class="lb-btn lb-next" onclick="nav(1)">&#8250;</button>
+  <div class="lb-bot" id="lbbot"></div>
+</div>
+
+<script>
+const TOKEN = 'sl.u.AGnv49Md5HjEtrSo_VsM4bjwqp_aP9s7r4Y0jxRLa6Za4cG8VzrKulaQyOsyLkAWxFL5roO63N7t2TeTGWzGVwdFjAi0WyWRL5TDt9p2k5FLSEtmWIWn6oGyz6bCpFgHPKBbQYYTawLlp053iCPLaWpKwOGzBMIP_sU3Ss493gES0NE6ooa8mDhhjPqjzOr3Z9xz-T1jH0EMkmxyVQMSrtlEOK7_evbGXTKdHPKH24W2JuLJK7txBrFEN7LKfpF96TJSSUEdPljxHQ0J04rBwaPt5ivmiLFnXb698XOf6kw5hUCJ6c7Xwu3K5TttgBnF0RB6kYUUdkppy2jLQV3iB9nlTlhv84yrIlDDfVWR23m5dUmdIk7KidfUPUPShMkRtJqqCLK08sPaTo5OsWat0bg180KfWWM8bg8nGNONjRKdfm2qbNm27SohM7Wh3BowsvvGSHWnLQp9UecPP4ig9QXNLcOtyMd4xWxRSmu0Ektj7n_6fRAJudDpnI_op3IaexuBG3v9NlfIUPe4aXVHFqN0o8Ox4zeiln3Cd6fEyD0AKtKJoAvmm8eDuwhft1EU1LJ8zq7mt3n6VBGBkmD5KLwrM0T3JENp8w9LJH4g9sHiPwG8PAJoDQyoEaOsxmvUcGpnsIz0B8ERko2palIIdqQFEEhXlWwLdmDH6tuRSo-ef0e1_FwRqbQh0lQlFVYEYV3R_DAUz4w1HvUujMldlbZ1PzOcRK0AHWRaz24831dmn-wyOz6JhVcOShpW2PjG9tL0tjj1sd4EXn4dK-adiwpVR8SfRe5i7jYPRn-5nrC3qESKY6S_s7GEz9qScVh1IEYqyd0pEohGk6Z80xKZp0RgnLazBfjRC3dRcMp1D8x8X0qeAZsAaJFJm2ZUi91QoV_gp4XlPY7Uj4uCsPpgMQ1uUFxfQA-8qWnZbBzW0njdtwr2rqeKQqSSORiDcLdInE5mknBjZaT_GvWm0u9ZkETB2uoJj7ov9tPvqp9K44hnNYcTUq2WnrEk4jmo_dcp-mQ9k2axJZMRjXi0sFuY-qdwsHoBWVb_WrFUbAb1ZkWCHHHq6ic-Z4HPru1xyEICrRaEe5pL8u9RWpz5Hz7vklEHIsu7ESlkM-tRr6wP_lQdB57e_SIIBjA3MLv1FLlKrFa56zLZzBOXqNRu0HBBOXTuKsdS57HlcOFnobBLB-D_WVszdrjN2s0OKUlqqIho-CcYMOFZSMUXpetKXdTMxIm4VnG18-Bfg0KeNE66O9icO5HVp-aU7Tadj3K4zRQt6BTLTdUOl6uCk4rbg82dyeuE3xFSxIWGews4t9t7hNEbcg';
+const SHARED = 'https://www.dropbox.com/scl/fo/y2qbm58f6xsbr940fdeb5/AH1gN-Y-Ew_zPseYGRlPfzs?rlkey=hhtl6njhhm7vtxfjkkyc7x8ot&st=c7ti95g4&dl=0';
+const IMGS = new Set(['jpg','jpeg','png','gif','webp','heic','heif','bmp','tiff','avif']);
+const VIDS = new Set(['mp4','mov','avi','mkv','m4v','wmv','3gp','mts']);
+
+let all=[], filt=[], lbIdx=0;
+
+function ext(n){return n.split('.').pop().toLowerCase()}
+function isMedia(n){const e=ext(n);return IMGS.has(e)||VIDS.has(e)}
+function isVid(n){return VIDS.has(ext(n))}
+function getDate(e){const r=e.client_modified||e.server_modified||'';return r?new Date(r):null}
+function fmtDate(d){if(!d)return '날짜 미상';return d.toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'})}
+function monthKey(d){if(!d)return '미상';return d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')}
+function monthLabel(k){if(k==='미상')return '날짜 미상';const[y,m]=k.split('.');return y+'년 '+parseInt(m)+'월'}
+function dayKey(d){return d?d.toISOString().slice(0,10):'미상'}
+
+async function api(ep,body){
+  const r=await fetch('https://api.dropboxapi.com/2/'+ep,{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+TOKEN,'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  });
+  if(!r.ok){const t=await r.text();throw new Error(t)}
+  return r.json();
+}
+
+async function tmpLink(path){
+  try{
+    const r=await fetch('https://api.dropboxapi.com/2/files/get_temporary_link',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+TOKEN,'Content-Type':'application/json'},
+      body:JSON.stringify({path})
+    });
+    if(!r.ok)return null;
+    const j=await r.json();
+    return j.link||null;
+  }catch{return null}
+}
+
+async function listFolder(path){
+  let entries=[],cursor=null,hasMore=true;
+  while(hasMore){
+    let data;
+    if(!cursor){
+      const body=path===''
+        ?{path:'',recursive:false,include_media_info:true,include_deleted:false,shared_link:{url:SHARED}}
+        :{path:path,recursive:false,include_media_info:true,include_deleted:false};
+      data=await api('files/list_folder',body);
+    } else {
+      data=await api('files/list_folder/continue',{cursor});
+    }
+    entries=entries.concat(data.entries||[]);
+    cursor=data.cursor;hasMore=data.has_more||false;
+  }
+  return entries;
+}
+
+async function loadAll(){
+  const allEntries=[];
+  const queue=[''];
+  while(queue.length>0){
+    const path=queue.shift();
+    const entries=await listFolder(path);
+    for(const e of entries){
+      if(e['.tag']==='folder') queue.push(e.path_lower||e.path_display);
+      else allEntries.push(e);
+    }
+  }
+  return allEntries.filter(e=>e['.tag']==='file'&&isMedia(e.name)).map(e=>({
+    name:e.name,path:e.path_display||e.path_lower,
+    date:getDate(e),isVideo:isVid(e.name),link:null
+  })).sort((a,b)=>(b.date||0)-(a.date||0));
+}
+
+function buildPills(){
+  const months=[...new Set(all.map(f=>monthKey(f.date)))];
+  const pg=document.getElementById('pills');
+  months.forEach(mk=>{
+    const b=document.createElement('button');
+    b.className='pill';b.dataset.m=mk;b.textContent=monthLabel(mk);
+    b.onclick=()=>setMonth(mk);pg.appendChild(b);
+  });
+  pg.querySelector('[data-m="all"]').onclick=()=>setMonth('all');
+}
+
+function setMonth(mk){
+  document.querySelectorAll('.pill').forEach(p=>p.classList.toggle('on',p.dataset.m===mk));
+  filt=mk==='all'?all:all.filter(f=>monthKey(f.date)===mk);
+  renderGrid();
+}
+
+function renderGrid(){
+  const groups=new Map();
+  filt.forEach((f,i)=>{
+    const k=dayKey(f.date);
+    if(!groups.has(k))groups.set(k,[]);
+    groups.get(k).push({...f,fi:i});
+  });
+  const main=document.getElementById('main');
+  main.innerHTML='';
+  if(groups.size===0){main.innerHTML='<div class="state"><p>📭 표시할 사진이 없어요</p></div>';return}
+  groups.forEach(files=>{
+    const sec=document.createElement('div');sec.className='sec';
+    const hdr=document.createElement('div');hdr.className='sec-hdr';
+    hdr.innerHTML=`<span class="sec-date">${fmtDate(files[0].date)}</span><span class="sec-cnt">${files.length}개</span>`;
+    const grid=document.createElement('div');grid.className='grid';
+    files.forEach(f=>{
+      const cell=document.createElement('div');cell.className='cell';
+      cell.innerHTML='<div class="loading-cell"><div class="mini-spin"></div></div>';
+      if(f.isVideo)cell.innerHTML+='<div class="vbadge">▶ 동영상</div>';
+      cell.onclick=()=>openLb(f.fi);
+      grid.appendChild(cell);
+      loadThumb(cell,f);
+    });
+    sec.appendChild(hdr);sec.appendChild(grid);
+    main.appendChild(sec);
+    const div=document.createElement('div');div.className='divider';main.appendChild(div);
+  });
+}
+
+async function loadThumb(cell,f){
+  try{
+    if(!f.isVideo){
+      const r=await fetch('https://content.dropboxapi.com/2/files/get_thumbnail',{
+        method:'POST',
+        headers:{
+          'Authorization':'Bearer '+TOKEN,
+          'Dropbox-API-Arg':JSON.stringify({path:f.path,format:'jpeg',size:'w640h480',mode:'bestfit'})
+        }
+      });
+      if(r.ok){
+        const blob=await r.blob();
+        const url=URL.createObjectURL(blob);
+        const img=document.createElement('img');img.src=url;img.alt=f.name;
+        cell.querySelector('.loading-cell').remove();
+        cell.insertBefore(img,cell.firstChild);return;
+      }
+    }
+    const link=await tmpLink(f.path);
+    if(link){
+      f.link=link;
+      if(f.isVideo){
+        const v=document.createElement('video');v.src=link+'#t=0.1';v.preload='metadata';
+        cell.querySelector('.loading-cell').remove();cell.insertBefore(v,cell.firstChild);
+      } else {
+        const img=document.createElement('img');img.src=link;img.alt=f.name;
+        cell.querySelector('.loading-cell').remove();cell.insertBefore(img,cell.firstChild);
+      }
+    } else {
+      cell.querySelector('.loading-cell').innerHTML='🖼️';
+    }
+  }catch{if(cell.querySelector('.loading-cell'))cell.querySelector('.loading-cell').innerHTML='🖼️'}
+}
+
+async function openLb(idx){lbIdx=idx;await showLb();document.getElementById('lb').classList.add('open');document.body.style.overflow='hidden'}
+async function showLb(){
+  const f=filt[lbIdx];
+  document.getElementById('lbname').textContent=f.name;
+  document.getElementById('lbbot').textContent=fmtDate(f.date)+' · '+(lbIdx+1)+' / '+filt.length;
+  const w=document.getElementById('lbwrap');
+  w.innerHTML='<div style="display:flex;align-items:center;justify-content:center;width:60px;height:60px"><div class="spin"></div></div>';
+  try{
+    let link=f.link||(await tmpLink(f.path));
+    if(link)f.link=link;
+    if(f.isVideo){
+      w.innerHTML=`<video src="${link}" controls autoplay style="max-width:100%;max-height:76vh;border-radius:6px"></video>`;
+    } else {
+      const img=new Image();img.src=link||'';img.alt=f.name;
+      img.style.cssText='max-width:100%;max-height:76vh;border-radius:6px;display:block';
+      w.innerHTML='';w.appendChild(img);
+    }
+  }catch{w.innerHTML='<p style="color:#fff">불러오기 실패</p>'}
+}
+function nav(d){lbIdx=(lbIdx+d+filt.length)%filt.length;showLb()}
+function closeLb(){document.getElementById('lb').classList.remove('open');document.body.style.overflow='';document.getElementById('lbwrap').innerHTML=''}
+document.getElementById('lb').addEventListener('click',e=>{if(e.target===document.getElementById('lb'))closeLb()});
+document.addEventListener('keydown',e=>{
+  if(!document.getElementById('lb').classList.contains('open'))return;
+  if(e.key==='ArrowRight')nav(1);if(e.key==='ArrowLeft')nav(-1);if(e.key==='Escape')closeLb();
+});
+
+// INIT
+(async()=>{
+  try{
+    all=await loadAll();
+    filt=[...all];
+    if(all.length===0){document.getElementById('main').innerHTML='<div class="state"><p>📭 폴더에 사진이나 동영상이 없어요</p></div>';return}
+    buildPills();renderGrid();
+    document.getElementById('dot').className='dot ok';
+    document.getElementById('stxt').textContent='총 '+all.length+'개';
+    document.getElementById('hsub').textContent='날짜별로 정리된 사진 & 동영상';
+  }catch(e){
+    console.error(e);
+    document.getElementById('main').innerHTML=`<div class="state"><p>⚠️ 불러오기 실패<br><small style="color:#bbb;font-size:11px">${e.message.slice(0,120)}</small></p></div>`;
+    document.getElementById('dot').className='dot err';
+    document.getElementById('stxt').textContent='오류';
+  }
+})();
+</script>
+</body>
+</html>
